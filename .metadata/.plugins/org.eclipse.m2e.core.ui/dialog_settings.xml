@@ -2,6 +2,7 @@
 <section name="Workbench">
 	<section name="MavenProjectImportWizardPage">
 		<list key="rootDirectory">
+			<item value="C:\Users\gouth\Desktop\git"/>
 			<item value="C:\Users\gouth\Desktop\javaCachingService\javaCachingService"/>
 		</list>
 		<list key="projectNameTemplate">
