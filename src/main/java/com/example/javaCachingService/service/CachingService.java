@@ -174,4 +174,18 @@ public class CachingService {
             throw e;
         }
     }
+
+    /**
+     * Retrieves the current size of the cache.
+     *
+     * @return the number of entities currently stored in the cache
+     */
+    public int getCacheSize() {
+        try {
+            return cache.size();
+        } catch (Exception e) {
+            log.error("Failed to retrieve cache size", e);
+            throw e;
+        }
+    }
 }
