@@ -38,14 +38,15 @@ public class CachingService {
      * @return the saved entity
      */
     public CachedEntity add(CachedEntity entity) {
+        if (entity == null) {
+            throw new IllegalArgumentException("Cannot add a null entity to the cache");
+        }
         try {
-            // If ID is null, save to DB first to generate an ID
             if (entity.getId() == null) {
                 entity = repository.save(entity);
                 log.info("Generated ID {} for new entity", entity.getId());
             }
 
-            // Check for eviction if cache limit is reached
             if (cache.size() >= maxCacheSize) {
                 evictLeastUsed();
             }
@@ -55,12 +56,14 @@ public class CachingService {
             leastUsedQueue.offer(entity.getId());
             log.info("Added entity with ID: {} to cache", entity.getId());
 
-            // Save entity to database to persist access count and other data
             return repository.save(entity);
 
+        } catch (IllegalArgumentException e) {
+            log.error("Entity cannot be null", e);
+            throw e;
         } catch (Exception e) {
             log.error("Failed to add entity with ID: {} to cache or database", entity.getId(), e);
-            throw e;
+            throw new RuntimeException("An error occurred while adding the entity to cache and database", e);
         }
     }
 
@@ -71,9 +74,11 @@ public class CachingService {
      * @return the retrieved entity, or null if not found
      */
     public CachedEntity get(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Entity ID cannot be null");
+        }
         try {
             if (cache.containsKey(id)) {
-                // Update frequency and reinsert into priority queue
                 frequencyMap.put(id, frequencyMap.get(id) + 1);
                 leastUsedQueue.remove(id);
                 leastUsedQueue.offer(id);
@@ -87,7 +92,6 @@ public class CachingService {
                     return null;
                 }
 
-                // Load entity into cache if found in database
                 cache.put(id, entityFromDb);
                 frequencyMap.put(id, 1);
                 leastUsedQueue.offer(id);
@@ -96,7 +100,7 @@ public class CachingService {
             }
         } catch (Exception e) {
             log.error("Failed to retrieve entity with ID: {} from cache or database", id, e);
-            throw e;
+            throw new RuntimeException("An error occurred while retrieving the entity", e);
         }
     }
 
@@ -106,23 +110,23 @@ public class CachingService {
      * @param id the ID of the entity to remove
      */
     public void remove(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Entity ID cannot be null");
+        }
         try {
             if (!cache.containsKey(id) && !repository.existsById(id)) {
                 log.warn("Entity with ID: {} not found in cache or database. Nothing to remove.", id);
                 return;
             }
 
-            // Remove from cache if present
             cache.remove(id);
             frequencyMap.remove(id);
             leastUsedQueue.remove(id);
-
-            // Remove from database if present
             repository.deleteById(id);
             log.info("Removed entity with ID: {} from cache and database", id);
         } catch (Exception e) {
             log.error("Failed to remove entity with ID: {} from cache or database", id, e);
-            throw e;
+            throw new RuntimeException("An error occurred while removing the entity", e);
         }
     }
 
@@ -138,7 +142,7 @@ public class CachingService {
             log.info("Removed all entities from cache and database");
         } catch (Exception e) {
             log.error("Failed to remove all entities from cache or database", e);
-            throw e;
+            throw new RuntimeException("An error occurred while removing all entities", e);
         }
     }
 
@@ -153,7 +157,7 @@ public class CachingService {
             log.info("Cleared the cache");
         } catch (Exception e) {
             log.error("Failed to clear the cache", e);
-            throw e;
+            throw new RuntimeException("An error occurred while clearing the cache", e);
         }
     }
 
@@ -171,7 +175,7 @@ public class CachingService {
             }
         } catch (Exception e) {
             log.error("Failed to evict least frequently used entity from cache", e);
-            throw e;
+            throw new RuntimeException("An error occurred while evicting the least frequently used entity", e);
         }
     }
 
@@ -185,7 +189,7 @@ public class CachingService {
             return cache.size();
         } catch (Exception e) {
             log.error("Failed to retrieve cache size", e);
-            throw e;
+            throw new RuntimeException("An error occurred while retrieving the cache size", e);
         }
     }
 }
