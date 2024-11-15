@@ -42,11 +42,12 @@ public class CachingService {
             throw new IllegalArgumentException("Cannot add a null entity to the cache");
         }
         try {
+        	// If ID is null, save to DB first to generate an ID
             if (entity.getId() == null) {
                 entity = repository.save(entity);
                 log.info("Generated ID {} for new entity", entity.getId());
             }
-
+            // Check for eviction if cache limit is reached
             if (cache.size() >= maxCacheSize) {
                 evictLeastUsed();
             }
@@ -55,7 +56,8 @@ public class CachingService {
             frequencyMap.put(entity.getId(), frequencyMap.getOrDefault(entity.getId(), 0) + 1);
             leastUsedQueue.offer(entity.getId());
             log.info("Added entity with ID: {} to cache", entity.getId());
-
+         
+            // Save entity to database to persist access count and other data
             return repository.save(entity);
 
         } catch (IllegalArgumentException e) {
@@ -79,6 +81,7 @@ public class CachingService {
         }
         try {
             if (cache.containsKey(id)) {
+            	// Update frequency and reinsert into priority queue
                 frequencyMap.put(id, frequencyMap.get(id) + 1);
                 leastUsedQueue.remove(id);
                 leastUsedQueue.offer(id);
@@ -91,7 +94,8 @@ public class CachingService {
                     log.warn("Entity with ID: {} not found in database either", id);
                     return null;
                 }
-
+                
+             // Load entity into cache if found in database
                 cache.put(id, entityFromDb);
                 frequencyMap.put(id, 1);
                 leastUsedQueue.offer(id);
@@ -118,10 +122,14 @@ public class CachingService {
                 log.warn("Entity with ID: {} not found in cache or database. Nothing to remove.", id);
                 return;
             }
+            
+         // Remove from cache if present
 
             cache.remove(id);
             frequencyMap.remove(id);
             leastUsedQueue.remove(id);
+            
+            //Remove from database if present
             repository.deleteById(id);
             log.info("Removed entity with ID: {} from cache and database", id);
         } catch (Exception e) {
